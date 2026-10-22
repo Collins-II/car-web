@@ -1,6 +1,6 @@
 {
-  "name": "Motive Motor Collection",
-  "short_name": "Motive",
+  "name": "IDI Motors",
+  "short_name": "IDI Motors",
   "description": "A considered collection of exceptional cars in Lusaka, Zambia.",
   "start_url": "/",
   "display": "standalone",
@@ -9,7 +9,7 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/motive-icon.svg",
+      "src": "/idi-motors-icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"

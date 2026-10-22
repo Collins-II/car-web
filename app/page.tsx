@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { ArrowRight, BadgeCheck, Check, MoveUpRight, ShieldCheck, Sparkles } from "lucide-react";
-import { formatPrice, vehicles } from "@/data/inventory";
+import { Price } from "@/components/dealership/SiteProvider";
+import { cssUrl, getVehicles, vehicleName } from "@/lib/portal";
+
+const BODY_STYLES = ["SUV", "Sedan", "Coupe", "Wagon", "Hatchback", "Truck", "Convertible"];
+const HERO_FALLBACK = "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1600&q=85";
 
 const reasons = [
   { icon: BadgeCheck, title: "Every detail, considered", copy: "Each car is carefully selected and thoroughly reviewed before it joins our collection." },
@@ -8,9 +12,11 @@ const reasons = [
   { icon: Sparkles, title: "A more personal way", copy: "No pressure, no noise. Just thoughtful guidance shaped around what matters to you." },
 ];
 
-export default function Home() {
-  const featured = vehicles.slice(0, 3);
-  const heroCar = vehicles[0];
+export default async function Home() {
+  const inventory = await getVehicles({ sort: "featured", limit: 6 });
+  const featured = inventory?.vehicles.slice(0, 3) ?? [];
+  const heroCar = featured.find((vehicle) => vehicle.image);
+  const makes = inventory?.makes ?? [];
 
   return (
     <div className="bg-[#f8f8f5] text-[#22251f]">
@@ -44,16 +50,16 @@ export default function Home() {
         </div>
 
         <div className="relative min-h-[360px] overflow-hidden rounded-[24px] bg-[#dadbd4] sm:min-h-[480px] lg:min-h-[610px]">
-          <div className="absolute inset-0 bg-cover bg-center transition duration-700 hover:scale-[1.02]" role="img" aria-label={`Featured ${heroCar.year} ${heroCar.make} ${heroCar.model}`} style={{ backgroundImage: `url("${heroCar.image}")` }} />
+          <div className="absolute inset-0 bg-cover bg-center transition duration-700 hover:scale-[1.02]" role="img" aria-label={heroCar ? `Featured ${vehicleName(heroCar)}` : "A car from the IDI Motors collection"} style={{ backgroundImage: cssUrl(heroCar?.image || HERO_FALLBACK) }} />
           <div className="absolute inset-0 bg-gradient-to-t from-[#141711]/65 via-transparent to-black/10" />
           <div className="absolute left-5 top-5 flex items-center gap-2 rounded-full border border-white/30 bg-white/15 px-4 py-2.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-white backdrop-blur-md sm:left-7 sm:top-7">
             <span className="h-1.5 w-1.5 rounded-full bg-[#d3ed88]" /> The collection, at a glance
           </div>
-          <Link href={`/inventory/${heroCar.slug}`} className="absolute inset-x-5 bottom-5 flex items-end justify-between gap-4 text-white sm:inset-x-8 sm:bottom-8">
+          <Link href={heroCar ? `/inventory/${heroCar.slug}` : "/inventory"} className="absolute inset-x-5 bottom-5 flex items-end justify-between gap-4 text-white sm:inset-x-8 sm:bottom-8">
             <div>
-              <span className="text-[9px] font-semibold uppercase tracking-[0.2em] text-white/70">In the spotlight</span>
-              <h2 className="mt-2 text-xl font-medium tracking-[-0.04em] sm:text-2xl">{heroCar.year} {heroCar.make} {heroCar.model}</h2>
-              <p className="mt-1 text-sm text-white/70">{heroCar.mileage.toLocaleString()} km <span className="mx-1">·</span> {heroCar.body}</p>
+              <span className="text-[9px] font-semibold uppercase tracking-[0.2em] text-white/70">{heroCar ? "In the spotlight" : "The collection"}</span>
+              <h2 className="mt-2 text-xl font-medium tracking-[-0.04em] sm:text-2xl">{heroCar ? vehicleName(heroCar) : "Explore what's new"}</h2>
+              {heroCar && <p className="mt-1 text-sm text-white/70">{heroCar.mileage.toLocaleString()} km <span className="mx-1">·</span> {heroCar.body}</p>}
             </div>
             <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#d3ed88] text-[#262a21] transition hover:scale-105"><MoveUpRight size={18} /></span>
           </Link>
@@ -78,14 +84,14 @@ export default function Home() {
               <span className="mb-1 block text-[9px] font-semibold uppercase tracking-[0.14em] text-[#95978e]">Make</span>
               <select name="make" defaultValue="" className="w-full bg-transparent text-sm text-[#55584f] outline-none">
                 <option value="">Any make</option>
-                {Array.from(new Set(vehicles.map((vehicle) => vehicle.make))).sort().map((make) => <option key={make}>{make}</option>)}
+                {makes.map((make) => <option key={make}>{make}</option>)}
               </select>
             </label>
             <label className="rounded-xl bg-[#f5f5f1] px-4 py-3">
               <span className="mb-1 block text-[9px] font-semibold uppercase tracking-[0.14em] text-[#95978e]">Body style</span>
               <select name="body" defaultValue="" className="w-full bg-transparent text-sm text-[#55584f] outline-none">
                 <option value="">Any style</option>
-                {["SUV", "Sedan", "Coupe", "Wagon"].map((body) => <option key={body}>{body}</option>)}
+                {BODY_STYLES.map((body) => <option key={body}>{body}</option>)}
               </select>
             </label>
             <button type="submit" className="inline-flex min-h-[58px] items-center justify-center gap-2 rounded-xl bg-[#d3ed88] px-7 text-[13px] font-bold text-[#30352a] transition hover:bg-[#c8e47a]">
@@ -121,11 +127,16 @@ export default function Home() {
           <Link href="/inventory" className="hidden items-center gap-2 text-sm font-semibold text-[#55594f] transition hover:text-[#20231d] sm:flex">View all vehicles <ArrowRight size={15} /></Link>
         </div>
 
+        {featured.length === 0 && (
+          <div className="rounded-2xl border border-dashed border-[#d8d9d1] bg-white px-6 py-14 text-center text-sm text-[#777970]">
+            New arrivals are being prepared. <Link href="/contact" className="font-semibold text-[#20231d] underline underline-offset-4">Tell us what you’re looking for</Link>.
+          </div>
+        )}
         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
           {featured.map((vehicle) => (
             <Link key={vehicle.slug} href={`/inventory/${vehicle.slug}`} className="group overflow-hidden rounded-[20px] border border-[#e8e8e2] bg-white transition duration-300 hover:-translate-y-1 hover:shadow-[0_20px_48px_rgba(32,35,29,0.1)]">
               <div className="relative aspect-[1.48] overflow-hidden bg-[#efefeb]">
-                <div className="absolute inset-0 bg-cover bg-center transition duration-700 group-hover:scale-[1.04]" role="img" aria-label={`${vehicle.year} ${vehicle.make} ${vehicle.model}`} style={{ backgroundImage: `url("${vehicle.image}")` }} />
+                <div className="absolute inset-0 bg-cover bg-center transition duration-700 group-hover:scale-[1.04]" role="img" aria-label={vehicleName(vehicle)} style={vehicle.image ? { backgroundImage: cssUrl(vehicle.image) } : undefined} />
                 {vehicle.badge && <span className="absolute left-4 top-4 rounded-full bg-[#f5f7ed] px-3 py-1.5 text-[9px] font-bold tracking-[0.14em] text-[#4d5a37]">{vehicle.badge}</span>}
                 <span className="absolute bottom-4 right-4 grid h-10 w-10 place-items-center rounded-full bg-white text-[#30342c] transition group-hover:bg-[#d3ed88]"><MoveUpRight size={16} /></span>
               </div>
@@ -133,7 +144,7 @@ export default function Home() {
                 <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#888a81]">{vehicle.year} <span className="mx-1 text-[#c5c6bf]">/</span> {vehicle.body} <span className="mx-1 text-[#c5c6bf]">/</span> {vehicle.mileage.toLocaleString()} km</p>
                 <h3 className="mt-3 text-[20px] font-semibold tracking-[-0.04em] text-[#24271f]">{vehicle.make} <span className="font-normal">{vehicle.model}</span></h3>
                 <div className="mt-5 flex items-end justify-between border-t border-[#edede8] pt-4">
-                  <span className="text-[17px] font-semibold tracking-[-0.03em] text-[#24271f]">{formatPrice(vehicle.price)}</span>
+                  <span className="text-[17px] font-semibold tracking-[-0.03em] text-[#24271f]"><Price amount={vehicle.price} /></span>
                   <span className="text-[11px] font-semibold text-[#74776e] transition group-hover:text-[#30342c]">Discover <ArrowRight size={13} className="ml-1 inline" /></span>
                 </div>
               </div>
@@ -146,7 +157,7 @@ export default function Home() {
       <section id="approach" className="bg-[#20231d] py-16 text-[#f7f7f2] sm:py-24">
         <div className="mx-auto grid max-w-[1440px] gap-12 px-5 sm:px-8 lg:grid-cols-[0.8fr_1.2fr] lg:gap-20 lg:px-12">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#b4be9d]">The Motive difference</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#b4be9d]">The IDI Motors difference</p>
             <h2 className="mt-4 max-w-md text-3xl font-medium leading-tight tracking-[-0.06em] sm:text-5xl">Buying a car should feel as good as driving one.</h2>
             <p className="mt-5 max-w-md text-sm leading-7 text-white/60">We believe the best way to find your next car is with time, trust and a little more attention to the details. That’s how we do things here.</p>
             <Link href="/contact" className="mt-8 inline-flex items-center gap-2 text-sm font-semibold text-[#d3ed88] transition hover:text-white">Get to know us <ArrowRight size={15} /></Link>

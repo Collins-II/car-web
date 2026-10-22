@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, MoveUpRight, Phone, Search, X } from "lucide-react";
 import { useState } from "react";
+import { CurrencySwitcher, useSite } from "@/components/dealership/SiteProvider";
+import { telHref } from "@/lib/portal";
 
 const links = [
   { label: "The collection", href: "/inventory" },
@@ -15,26 +17,32 @@ const links = [
 export default function Navbar() {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const { settings } = useSite();
 
   return (
     <header className="relative z-50 border-b border-[#e7e7e1] bg-[#f8f8f5]">
       <div className="border-b border-[#e7e7e1] bg-[#f1f1ec]">
         <div className="mx-auto flex max-w-[1440px] items-center justify-between px-5 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#74766e] sm:px-8 lg:px-12">
-          <span>Lusaka, Zambia <span className="mx-2 text-[#c7c8c0]">/</span> Curated cars, considered differently</span>
-          <a className="hidden items-center gap-2 transition hover:text-[#20231d] sm:flex" href="tel:+260970785901">
-            <Phone size={12} /> +260 970 785 901
-          </a>
+          <span>{settings.address} <span className="mx-2 text-[#c7c8c0]">/</span> Curated cars, considered differently</span>
+          <div className="flex items-center gap-5">
+            {settings.phone && (
+              <a className="hidden items-center gap-2 transition hover:text-[#20231d] sm:flex" href={telHref(settings.phone)}>
+                <Phone size={12} /> {settings.phone}
+              </a>
+            )}
+            <CurrencySwitcher className="text-[#74766e]" />
+          </div>
         </div>
       </div>
 
       <div className="mx-auto flex h-[76px] max-w-[1440px] items-center justify-between px-5 sm:px-8 lg:px-12">
-        <Link href="/" aria-label="Motive home" className="group flex items-center gap-3">
+        <Link href="/" aria-label="IDI Motors home" className="group flex items-center gap-3">
           <span className="grid h-10 w-10 place-items-center rounded-full bg-[#20231d] text-[#d3ed88] transition group-hover:bg-[#34382f]">
-            <span className="text-lg font-black tracking-[-0.12em]">M.</span>
+            <span className="text-sm font-black tracking-[-0.08em]">IDI</span>
           </span>
           <span className="flex flex-col">
-            <span className="text-[17px] font-bold leading-none tracking-[0.12em] text-[#20231d]">MOTIVE</span>
-            <span className="mt-1 text-[9px] font-semibold uppercase tracking-[0.24em] text-[#85877f]">Motor collection</span>
+            <span className="text-[17px] font-bold leading-none tracking-[0.12em] text-[#20231d]">IDI MOTORS</span>
+            <span className="mt-1 text-[9px] font-semibold uppercase tracking-[0.24em] text-[#85877f]">The collection</span>
           </span>
         </Link>
 
@@ -85,9 +93,11 @@ export default function Navbar() {
               {link.label}<MoveUpRight size={15} />
             </Link>
           ))}
-          <a href="tel:+260970785901" className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[#34372f]">
-            <Phone size={15} /> +260 970 785 901
-          </a>
+          {settings.phone && (
+            <a href={telHref(settings.phone)} className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[#34372f]">
+              <Phone size={15} /> {settings.phone}
+            </a>
+          )}
         </nav>
       )}
     </header>

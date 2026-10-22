@@ -1,42 +1,57 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ArrowDownUp, ArrowRight, Gauge, SlidersHorizontal } from "lucide-react";
-import { formatPrice, vehicles } from "@/data/inventory";
+import { usePathname, useRouter } from "next/navigation";
+import { ArrowDownUp, ArrowRight, SlidersHorizontal } from "lucide-react";
+import type { Vehicle } from "@/lib/portal";
+import VehicleCard from "./VehicleCard";
 
 type InventoryBrowserProps = {
+  vehicles: Vehicle[];
   initialQuery?: string;
   initialMake?: string;
   initialBody?: string;
 };
 
-const makes = Array.from(new Set(vehicles.map((vehicle) => vehicle.make))).sort();
-
-export default function InventoryBrowser({ initialQuery = "", initialMake = "", initialBody = "" }: InventoryBrowserProps) {
+export default function InventoryBrowser({ vehicles, initialQuery = "", initialMake = "", initialBody = "" }: InventoryBrowserProps) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [query, setQuery] = useState(initialQuery);
   const [make, setMake] = useState(initialMake);
   const [body, setBody] = useState(initialBody);
   const [sort, setSort] = useState("featured");
 
+  const makes = useMemo(() => Array.from(new Set(vehicles.map((vehicle) => vehicle.make))).sort(), [vehicles]);
+  const bodies = useMemo(() => Array.from(new Set(vehicles.map((vehicle) => vehicle.body))).sort(), [vehicles]);
+
   const results = useMemo(() => {
-    const search = query.trim().toLowerCase();
+    const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
     const filtered = vehicles.filter((vehicle) => {
-      const matchesSearch = !search || `${vehicle.year} ${vehicle.make} ${vehicle.model} ${vehicle.body}`.toLowerCase().includes(search);
-      return matchesSearch && (!make || vehicle.make === make) && (!body || vehicle.body === body);
+      const haystack = `${vehicle.year} ${vehicle.make} ${vehicle.model} ${vehicle.body} ${vehicle.color} ${vehicle.fuel}`.toLowerCase();
+      return terms.every((term) => haystack.includes(term))
+        && (!make || vehicle.make.toLowerCase() === make.toLowerCase())
+        && (!body || vehicle.body === body);
     });
 
-    if (sort === "price-low") return filtered.sort((a, b) => a.price - b.price);
-    if (sort === "price-high") return filtered.sort((a, b) => b.price - a.price);
-    if (sort === "newest") return filtered.sort((a, b) => b.year - a.year);
+    if (sort === "price-low") return [...filtered].sort((a, b) => a.price - b.price);
+    if (sort === "price-high") return [...filtered].sort((a, b) => b.price - a.price);
+    if (sort === "newest") return [...filtered].sort((a, b) => b.year - a.year);
     return filtered;
-  }, [body, make, query, sort]);
+  }, [body, make, query, sort, vehicles]);
+
+  function syncUrl(next: { q?: string; make?: string; body?: string }) {
+    const params = new URLSearchParams();
+    const values = { q: query, make, body, ...next };
+    for (const [key, value] of Object.entries(values)) if (value) params.set(key, value);
+    router.replace(params.size ? `${pathname}?${params}` : pathname, { scroll: false });
+  }
 
   function clearFilters() {
     setQuery("");
     setMake("");
     setBody("");
     setSort("featured");
+    router.replace(pathname, { scroll: false });
   }
 
   return (
@@ -48,22 +63,23 @@ export default function InventoryBrowser({ initialQuery = "", initialMake = "", 
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
+            onBlur={() => syncUrl({ q: query.trim() })}
             placeholder="Make, model or keyword"
             className="min-w-0 flex-1 bg-transparent text-sm text-[#262920] outline-none placeholder:text-[#9b9d94]"
           />
         </label>
         <label className="rounded-xl bg-[#f5f5f1] px-4 py-3">
           <span className="sr-only">Filter by make</span>
-          <select value={make} onChange={(event) => setMake(event.target.value)} className="w-full bg-transparent text-sm text-[#464940] outline-none">
+          <select value={make} onChange={(event) => { setMake(event.target.value); syncUrl({ make: event.target.value }); }} className="w-full bg-transparent text-sm text-[#464940] outline-none">
             <option value="">All makes</option>
             {makes.map((option) => <option key={option} value={option}>{option}</option>)}
           </select>
         </label>
         <label className="rounded-xl bg-[#f5f5f1] px-4 py-3">
           <span className="sr-only">Filter by body style</span>
-          <select value={body} onChange={(event) => setBody(event.target.value)} className="w-full bg-transparent text-sm text-[#464940] outline-none">
+          <select value={body} onChange={(event) => { setBody(event.target.value); syncUrl({ body: event.target.value }); }} className="w-full bg-transparent text-sm text-[#464940] outline-none">
             <option value="">All body styles</option>
-            {["SUV", "Sedan", "Coupe", "Wagon"].map((option) => <option key={option} value={option}>{option}</option>)}
+            {bodies.map((option) => <option key={option} value={option}>{option}</option>)}
           </select>
         </label>
         <label className="flex items-center gap-2 rounded-xl bg-[#f5f5f1] px-4 py-3">
@@ -79,49 +95,19 @@ export default function InventoryBrowser({ initialQuery = "", initialMake = "", 
       </div>
 
       <div className="mb-5 mt-8 flex items-center justify-between">
-        <p className="text-sm text-[#777970]"><span className="font-semibold text-[#292c25]">{results.length} vehicles</span> selected with care</p>
+        <p className="text-sm text-[#777970]" aria-live="polite"><span className="font-semibold text-[#292c25]">{results.length} {results.length === 1 ? "vehicle" : "vehicles"}</span> selected with care</p>
         {(query || make || body) && <button onClick={clearFilters} className="text-xs font-semibold text-[#55594f] underline underline-offset-4">Clear filters</button>}
       </div>
 
       {results.length > 0 ? (
         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-          {results.map((vehicle) => (
-            <article key={vehicle.slug} className="group overflow-hidden rounded-[20px] border border-[#e8e8e2] bg-white transition duration-300 hover:-translate-y-1 hover:shadow-[0_20px_48px_rgba(32,35,29,0.1)]">
-              <Link href={`/inventory/${vehicle.slug}`} className="block">
-                <div
-                  role="img"
-                  aria-label={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
-                  className="relative aspect-[1.48] overflow-hidden bg-[#efefeb] bg-cover bg-center transition duration-500 group-hover:bg-[length:105%]"
-                  style={{ backgroundImage: `url("${vehicle.image}")` }}
-                >
-                  {vehicle.badge && <span className="absolute left-4 top-4 rounded-full bg-[#f5f7ed] px-3 py-1.5 text-[9px] font-bold tracking-[0.14em] text-[#4d5a37]">{vehicle.badge}</span>}
-                </div>
-                <div className="p-5 sm:p-6">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#888a81]">{vehicle.year} <span className="mx-1 text-[#c5c6bf]">/</span> {vehicle.body}</p>
-                    <span className="text-[10px] text-[#8b8d85]">{vehicle.color}</span>
-                  </div>
-                  <h3 className="mt-3 text-[20px] font-semibold tracking-[-0.04em] text-[#24271f]">{vehicle.make} <span className="font-normal">{vehicle.model}</span></h3>
-                  <div className="mt-4 flex items-center gap-2 text-xs text-[#797c73]">
-                    <Gauge size={14} /> {vehicle.mileage.toLocaleString()} km <span className="text-[#d0d1ca]">·</span> {vehicle.transmission}
-                  </div>
-                  <div className="mt-5 flex items-end justify-between border-t border-[#edede8] pt-4">
-                    <div>
-                      <span className="block text-[9px] font-semibold uppercase tracking-[0.15em] text-[#96988f]">Asking price</span>
-                      <span className="mt-1 block text-[17px] font-semibold tracking-[-0.03em] text-[#24271f]">{formatPrice(vehicle.price)}</span>
-                    </div>
-                    <span className="grid h-9 w-9 place-items-center rounded-full bg-[#f3f4ed] text-[#44483d] transition group-hover:bg-[#d3ed88]"><ArrowRight size={16} /></span>
-                  </div>
-                </div>
-              </Link>
-            </article>
-          ))}
+          {results.map((vehicle) => <VehicleCard key={vehicle.slug} vehicle={vehicle} />)}
         </div>
       ) : (
         <div className="rounded-2xl border border-dashed border-[#d8d9d1] bg-white px-6 py-20 text-center">
-          <h2 className="text-xl font-semibold text-[#272a23]">No exact match just yet</h2>
-          <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#777970]">Try another make or body style, or speak with our team and we’ll help find the right car for you.</p>
-          <button onClick={clearFilters} className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#20231d] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#3a3e34]">Reset filters <ArrowRight size={15} /></button>
+          <h2 className="text-xl font-semibold text-[#272a23]">{vehicles.length ? "No exact match just yet" : "New arrivals are on their way"}</h2>
+          <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#777970]">{vehicles.length ? "Try another make or body style, or speak with our team and we’ll help find the right car for you." : "Our collection is being refreshed. Tell us what you’re looking for and we’ll be in touch."}</p>
+          {vehicles.length > 0 && <button onClick={clearFilters} className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#20231d] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#3a3e34]">Reset filters <ArrowRight size={15} /></button>}
         </div>
       )}
     </div>
