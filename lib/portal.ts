@@ -3,7 +3,7 @@
  * Server components use the `get*` helpers (cached via ISR); browser components use `portalFetch`.
  */
 
-export const PORTAL_URL = (process.env.NEXT_PUBLIC_PORTAL_URL || "http://localhost:3001").replace(/\/$/, "");
+export const PORTAL_URL = (process.env.NEXT_IDI_PORTAL_URL || "http://localhost:3001").replace(/\/$/, "");
 const SERVER_PORTAL_URL = (process.env.PORTAL_URL || PORTAL_URL).replace(/\/$/, "");
 
 export type Vehicle = {

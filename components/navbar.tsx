@@ -17,7 +17,7 @@ const links = [
 export default function Navbar() {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
-  const { settings } = useSite();
+  const { settings } = useSite()
 
   return (
     <header className="relative z-50 border-b border-[#e7e7e1] bg-[#f8f8f5]">
